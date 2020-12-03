@@ -1,0 +1,30 @@
+# https://stackoverflow.com/questions/22777660/display-an-rgb-matrix-image-in-python
+
+# https://stackoverflow.com/questions/45384968/how-to-cut-an-image-vertically-into-two-equal-sized-images
+
+# https://stackoverflow.com/questions/39885178/how-can-i-see-the-rgb-channels-of-a-given-image-with-python
+
+https://stackoverflow.com/questions/19181485/splitting-image-using-opencv-in-python
+
+cv2 for image handling:
+- source: https://stackoverflow.com/questions/50963283/python-opencv-imshow-doesnt-need-convert-from-bgr-to-rgb
+
+numpy choose
+- https://numpy.org/doc/stable/reference/generated/numpy.choose.html
+
+
+kmeans:
+- https://gist.github.com/ronvohra/5d0a9f9d825a3891cb4b
+- https://github.com/aditya1702/Machine-Learning-and-Data-Science/blob/master/Implementation%20of%20Machine%20Learning%20Algorithms/Unsupervised/kmeans.py
+- https://gist.github.com/larsmans/4952848
+- https://gist.github.com/cpicanco/d610731b807bbe85f23b
+- https://jakevdp.github.io/PythonDataScienceHandbook/05.11-k-means.html
+- https://gdcoder.com/implementation-of-k-means-from-scratch-in-python-9-lines/
+- https://github.com/lechemrc/CS-Build-Week/blob/master/src/project.ipynb
+- https://github.com/ntrischi/Kmeans-Image-Segmentation/blob/master/kmeans_imgsegment.py
+- https://www.kdnuggets.com/2019/08/introduction-image-segmentation-k-means-clustering.html
+- https://pythonprogramming.net/k-means-from-scratch-2-machine-learning-tutorial/?completed=/k-means-from-scratch-machine-learning-tutorial/
+
+
+get top K minimum values in a dictionary: **very useful
+- https://www.geeksforgeeks.org/python-smallest-k-values-in-dictionary/
