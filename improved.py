@@ -2,10 +2,47 @@ from utils import *
 import cv2
 
 
+def relu(z):
+    return max(z, 0)
+
+
+def sigmoid(z):
+    return 1/(np.exp(-z)+1)
+
+
 class RayNet:
-    def __init__(self, hidden_sizes, act):
-        self.hidden_sizes = hidden_sizes
-        self.act = act
+    def __init__(self, input_size, output_size, hidden_size, lr=0.03):
+        self.lr = lr
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.weights = []
+        # +1 for the bias term in these weight initializations
+        self.weights[0] = self.init_weights(self.input_size+1, self.hidden_size)
+        self.weights[1] = self.init_weights(self.hidden_size+1, self.output_size)
+
+    @staticmethod
+    def init_weights(input, out):
+        # LeCun, Y., Bottou, L., Orr, G. B., and Muller, K. (1998a). Efficient backprop. In Neural Networks, Tricks of the Trade.
+        # scaling the random weights by the inverse of the sqrt of the fan-in
+        return np.random.randn(input+1, out) * (1/np.sqrt(input+1))
+
+    def forward(x):
+        pre_activations = []
+        activations = [x]
+        for weight in self.weights:
+            z = np.dot(weight, x)
+            x = sigmoid(z)
+            pre_activations.append(z)
+            activations.append(x)
+        return x, pre_activations, activations
+
+    def backward(self, pre_activations, activations):
+        pass
+
+    def loss(self, y, y_prime):
+        n = y_prime.shape[1]
+        return (1/(2*n)) * np.sum((y - y_prime)**2)
 
 
 if __name__ == '__main__':
