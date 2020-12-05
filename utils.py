@@ -81,7 +81,7 @@ def kmeans(k, image, dataset, max_ita=10, plot=False):
     :param image: the matrix of colors in the original image, each data point is 3-dimensional
     :return: the k colors that we want to use to represent the original image's colors, c1,c2,...,ck
     """
-    np.random.seed(1)  # reproducehttps://rutgers.instructure.com/calendar
+    np.random.seed(1)  # reproduce
     centroids = []
     for _ in range(k):
         centroids.append(dataset[np.random.randint(0, dataset.shape[0])])  # choose centers from dataset itself
@@ -278,8 +278,8 @@ def get_6_similar_patches(patch, train_data_gray):
     distances = {}  # have a dictionary mapping the index of the patch to the similarity of the train patch at
     # the index to the given patch that we are comparing to
     # store all the distances for each patch of the train data compared to the input patch from the test data
-    for i in range(0, (test_data.shape[0])):
-        for j in range(0, (test_data.shape[1])):
+    for i in range(0, (train_data_gray.shape[0])):
+        for j in range(0, (train_data_gray.shape[1])):
             train_patch = get_3_patch(train_data_gray, i, j)
             distance = get_cumulative_distance(patch, train_patch)
             distances[(i, j)] = distance
@@ -305,8 +305,50 @@ def get_cumulative_distance(m1, m2):
     return total_distance
 
 
+def kmeans_elbow_helper(k, dataset):
+    """
+    Run K-Means to get the k best representative colors
+    :param k: the number of clusters that we want to consider
+    :param image: the matrix of colors in the original image, each data point is 3-dimensional
+    :return: the k colors that we want to use to represent the original image's colors, c1,c2,...,ck
+    """
+    np.random.seed(1)  # reproduce
+    centroids = []
+    for _ in range(k):
+        centroids.append(dataset[np.random.randint(0, dataset.shape[0])])  # choose centers from dataset itself
+    distances = []
+    for run in range(1):
+        centroids = np.array(centroids)
+        clusters = {}
+        for i in range(k):
+            clusters[i] = []  # initialize the clusters data structure
+        for data in dataset:
+            distance = []
+            for j in range(k):
+                distance.append(np.linalg.norm(data - centroids[j]))  # Euclidian distance between data point and center
+            clusters[np.argmin(distance)].append(data)  # choose the arg 0,k-1 where the datapoint was closest to center
+            distances.append(np.min(distance))
+        for i in range(k):
+            centroids[i] = np.average(clusters[i], axis=0)  # new center averaging the points in the cluster
+    return np.average(distances, axis=0)
+
+
+def plot_elbow_kmeans(dataset):
+    # Source: https://stackoverflow.com/questions/5283649/plot-smooth-line-with-pyplot
+    # the above source is how I smoothed the elbow plot
+    ks = [k for k in range(1, 100)]
+    avg_distances_to_nearest_center = []
+    for k in ks:
+        avg_distances_to_nearest_center.append(kmeans_elbow_helper(k, dataset))
+    # plt.xticks(np.arange(1,29, step=1))
+    plt.ylabel("Avg Distance to Nearest Center")
+    plt.xlabel("K")
+    plt.plot(ks, avg_distances_to_nearest_center)
+    plt.show()
+
+
 if __name__ == '__main__':
-    K = 5
+    K = 29
     original_input_image = mpimg.imread(IMAGE_PATH)
     rgb_matrix = np.array(original_input_image)  # these are all of the RGB vectors needed
     gray_image_matrix = make_gray(rgb_matrix)  # these are all the gray scale vectors needed
@@ -317,5 +359,10 @@ if __name__ == '__main__':
     test_data = right_half_gray  # test data is just the gray correspondence of the image
 
     dataset = get_colors(train_data_rgb)
-    train_rgb_5_colors = kmeans(K, train_data_rgb, dataset, plot=False)
-    basic_agent_logic(test_data, train_data_gray, train_rgb_5_colors)
+    # just plotting this to see if we have a reasonable reconstruction learned
+    # dataset_entire_img = get_colors(rgb_matrix)
+    # representative_entire_image = kmeans(K, rgb_matrix, dataset_entire_img, plot=True)
+    # train_rgb_5_colors = kmeans(K, train_data_rgb, dataset, plot=True)
+    # rep_test_img = basic_agent_logic(test_data, train_data_gray, train_rgb_5_colors)
+    # plot_img_color(rep_test_img)
+    plot_elbow_kmeans(dataset)
