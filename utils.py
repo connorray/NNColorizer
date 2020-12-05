@@ -348,7 +348,7 @@ def plot_elbow_kmeans(dataset):
 
 
 if __name__ == '__main__':
-    K = 29
+    K = 59
     original_input_image = mpimg.imread(IMAGE_PATH)
     rgb_matrix = np.array(original_input_image)  # these are all of the RGB vectors needed
     gray_image_matrix = make_gray(rgb_matrix)  # these are all the gray scale vectors needed
@@ -362,7 +362,7 @@ if __name__ == '__main__':
     # just plotting this to see if we have a reasonable reconstruction learned
     # dataset_entire_img = get_colors(rgb_matrix)
     # representative_entire_image = kmeans(K, rgb_matrix, dataset_entire_img, plot=True)
-    # train_rgb_5_colors = kmeans(K, train_data_rgb, dataset, plot=True)
-    # rep_test_img = basic_agent_logic(test_data, train_data_gray, train_rgb_5_colors)
-    # plot_img_color(rep_test_img)
-    plot_elbow_kmeans(dataset)
+    train_rgb_5_colors = kmeans(K, train_data_rgb, dataset, plot=False)
+    rep_test_img = basic_agent_logic(test_data, train_data_gray, train_rgb_5_colors)
+    plot_img_color(rep_test_img)
+    # plot_elbow_kmeans(dataset)

@@ -1,7 +1,7 @@
 import cv2
 
 IMAGE_PATH = "img/small_train_img.jpg"
-K = 59
+K = 5
 from utils import *
 
 
@@ -39,6 +39,6 @@ if __name__ == '__main__':
     # step 6: repeat steps 5c-5f until  we have recolored the middle pixel of each patch in the test data
 
     # step 7: plot the original image, the recolored left half, the recolored right half
-    # plot_img_color(original_img)
+    plot_img_color(original_img)
     plot_img_color(rep_train_rgb)
     plot_img_color(rep_test_rgb)
