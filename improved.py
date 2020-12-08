@@ -27,7 +27,7 @@ class RayNet:
         # scaling the random weights by the inverse of the sqrt of the fan-in
         return np.random.randn(input+1, out) * (1/np.sqrt(input+1))
 
-    def forward(x):
+    def forward(self, x):
         pre_activations = []
         activations = [x]
         for weight in self.weights:
@@ -37,8 +37,8 @@ class RayNet:
             activations.append(x)
         return x, pre_activations, activations
 
-    def backward(self, pre_activations, activations):
-        pass
+    def backward(self, x, pre_activations, activations):
+        error = (x - )
 
     def loss(self, y, y_prime):
         n = y_prime.shape[1]
