@@ -37,6 +37,8 @@ Improved Agent:
 
 https://github.com/kcolyhs/Colorizer
 
+- https://www.geeksforgeeks.org/deep-neural-net-with-forward-and-back-propagation-from-scratch-python/
+
 -----------------------------------------------------------------------------------------------------------------------
 potential inspiration for coloring images based on a dataset of images (extra credit):
 - http://cs231n.stanford.edu/reports/2016/pdfs/219_Report.pdf

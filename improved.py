@@ -10,39 +10,54 @@ def sigmoid(z):
     return 1/(np.exp(-z)+1)
 
 
+def loss(y, y_prime):
+    n = y_prime.shape[1]
+    return (1/(2*n)) * np.sum((y - y_prime)**2)
+
+def loss_prime(y, y_prime):
+    return y - y_prime
+
+
+class RayLayer:
+    def __init__(self, num_inputs, num_neurons):
+        # LeCun, Y., Bottou, L., Orr, G. B., and Muller, K. (1998a). Efficient backprop. In Neural Networks, Tricks of the Trade.
+        # scaling the random weights by the inverse of the sqrt of the fan-in
+        self.weights = np.random.randn(num_inputs, num_inputs) * (1/np.sqrt(num_inputs+1))
+        self.biases = np.zeros((1, num_neurons))
+
+    def forward(self, x):
+        self.output = np.dot(x, self.weights) + self.biases
+
+
 class RayNet:
     def __init__(self, input_size, output_size, hidden_size, lr=0.03):
         self.lr = lr
         self.input_size = input_size
         self.output_size = output_size
         self.hidden_size = hidden_size
-        self.weights = []
-        # +1 for the bias term in these weight initializations
-        self.weights[0] = self.init_weights(self.input_size+1, self.hidden_size)
-        self.weights[1] = self.init_weights(self.hidden_size+1, self.output_size)
-
-    @staticmethod
-    def init_weights(input, out):
-        # LeCun, Y., Bottou, L., Orr, G. B., and Muller, K. (1998a). Efficient backprop. In Neural Networks, Tricks of the Trade.
-        # scaling the random weights by the inverse of the sqrt of the fan-in
-        return np.random.randn(input+1, out) * (1/np.sqrt(input+1))
+        self.layer1 = RayLayer(input_size, hidden_size)
+        self.layer2 = RayLayer(hidden_size, output_size)
+        self.weights = [self.layer1.weights, self.layer2.weights]
+        self.biases = [self.layer1.biases, self.layer2.biases]
 
     def forward(self, x):
-        pre_activations = []
-        activations = [x]
-        for weight in self.weights:
-            z = np.dot(weight, x)
-            x = sigmoid(z)
-            pre_activations.append(z)
-            activations.append(x)
-        return x, pre_activations, activations
+        pre_activations = {}
+        z1 = self.layer1.forward(x)
+        pre_activations['z1'] = z1
+        a1 = relu(z1)
+        pre_activations['a1'] = a1
+        z2 = self.layer2.forward(x)
+        pre_activations['z2'] = z2
+        a2 = sigmoid(z2)
+        pre_activations['a2'] = a2
+        return a2, pre_activations
 
-    def backward(self, x, pre_activations, activations):
-        error = (x - )
+    def backward(self, x, y, y_prime, pre_activations):
+        a1 = pre_activations['a1']
+        a2 = pre_activations['a2']
+        dz2 = a2 - y
+        self.weights[0] = self.weights[0] - self.lr
 
-    def loss(self, y, y_prime):
-        n = y_prime.shape[1]
-        return (1/(2*n)) * np.sum((y - y_prime)**2)
 
 
 if __name__ == '__main__':
