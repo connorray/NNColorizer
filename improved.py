@@ -57,6 +57,7 @@ class RayNet:
         a2 = pre_activations['a2']
         dz2 = a2 - y
         self.weights[0] = self.weights[0] - self.lr
+        self.weights[1] = self.weights[1] - self.lr
 
 
 
