@@ -140,6 +140,20 @@ def get_colors(data):
     return dataset
 
 
+def get_grays(data):
+    """
+    Grab all the present gray pixels in an image in a list form
+    :param data: the image
+    :return: list of float gray pixels
+    """
+    dataset = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            dataset.append(data[i][j])
+    dataset = np.array(dataset)
+    return dataset
+
+
 def get_3_patch(data, i, j):
     """
     Helper function to return a 3x3 patch of given data at a given index.
