@@ -35,6 +35,11 @@ Improved Agent:
 - https://towardsdatascience.com/how-to-build-your-own-neural-network-from-scratch-in-python-68998a08e4f6
 - https://github.com/CihanBosnali/Neural-Network-without-ML-Libraries/blob/master/single-layer-neural-net-without-ml-libraries.py
 
+np.random.uniform for weights init
+- https://www.wandb.com/articles/the-effects-of-weight-initialization-on-neural-nets
+- https://www.wandb.com/articles/the-effects-of-weight-initialization-on-neural-nets
+- https://stackoverflow.com/questions/22071987/generate-random-array-of-floats-between-a-range
+
 https://github.com/kcolyhs/Colorizer
 
 - https://www.geeksforgeeks.org/deep-neural-net-with-forward-and-back-propagation-from-scratch-python/
