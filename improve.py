@@ -1,5 +1,7 @@
-from utils import *
 import cv2
+from utils import *
+
+np.random.seed(22)
 
 
 class Activation:
@@ -11,12 +13,16 @@ class Activation:
             return self._sigmoid(z)
         elif self.type == 'relu':
             return self._relu(z)
+        elif self.type == 'linear':
+            return z
 
     def prime(self, a):
         if self.type =='sigmoid':
             return self._sigmoid_prime(a)
         elif self.type == 'relu':
             return self._relu_derivative(a)
+        elif self.type == 'linear':
+            return 1
 
     def _sigmoid(self,z):
         return 1/(np.exp(-z)+1)
@@ -46,12 +52,15 @@ class Criterion:
     def __init__(self):
         self.error = None
 
-    def get_loss(self, out, y):
-        self.error = out-y
-        return np.sum(self.error**2)
+    def get_loss(self, out, y, gray_out, gray_groundtruth, lamb=0.01):  # MSE loss
+        # MSE loss with a neat trick for constraining values for the conversion from gray to rgb
+        self.error = np.subtract(out, y)
+        return (np.square(self.error) + lamb * (gray_out - gray_groundtruth) ** 2).mean()
 
-    def get_loss_prime(self, out, y):
-        return 2 * np.dot(out, y)
+    def get_loss_prime(self, x):
+        x = x.reshape(x.shape[0],1)
+        err = self.error.reshape(1,3)
+        return 2 * np.dot(x, err)
 
 
 class RayLayer:
@@ -62,6 +71,8 @@ class RayLayer:
         self.activation = Activation(type=activation)
 
     def forward(self, x):
+        if x.shape == ():  # only for the first input gray pixel
+            x = [x]  # in order to add the 1. as the bias term
         self.og_input = np.concatenate(([1.], x))  # bias term
         h = np.dot(self.og_input, self.weights)
         self.act_prime = self.activation.prime(h)
@@ -74,80 +85,82 @@ class RayNet:
         self.input_size = input_size
         self.output_size = output_size
         self.hidden_size = hidden_size
-        weight3 = np.random.randn(input_size+1, hidden_size[0])*0.02-0.1 #* (1 / np.sqrt(hidden_size[0] + 1))
-        # weight2 = np.random.randn(hidden_size[0] + 1, hidden_size[1])*0.02-0.01 # * (1 / np.sqrt(hidden_size[1] + 1))
-        weight1 = np.random.randn(hidden_size[0] + 1, output_size) * (1 / np.sqrt(output_size + 1))
-        layer1 = RayLayer(weights=weight3)  # in -> h1
-        # layer2 = RayLayer(weights=weight2)  # h1 -> h2
-        self.layer3 = RayLayer(weights=weight1)  # h2 -> out
-        # self.sequential = [layer1, layer2]  # layer3 last
-        self.sequential = [layer1]
+        # source: https://stackoverflow.com/questions/22071987/generate-random-array-of-floats-between-a-range
+        weight2 = np.random.uniform(low=-1/np.sqrt(input_size+1), high=1/np.sqrt(input_size+1), size=(input_size + 1, hidden_size))
+        weight1 = np.random.uniform(low=-1/np.sqrt(hidden_size+1), high=1/np.sqrt(hidden_size+1), size=(hidden_size + 1, output_size))
+        self.layer1 = RayLayer(weights=weight2, activation='sigmoid')  # in -> h
+        self.layer2 = RayLayer(weights=weight1, activation='linear')  # h -> out
         self.criterion = Criterion()
+        self.pre_activations = {}
 
-    def forward(self, x, y, training=False):
-        for layer in self.sequential:
-            x = layer.forward(x)
-        x_pad = np.concatenate(([1.], x))
-        pred = np.dot(x_pad, self.layer3.weights)
+    def forward(self, x):
+        # print(x)  # single float gray pixel value
+        x = self.layer1.forward(x)  # feed into the first layer in --> h
+        pre_activation_x = self.layer1.og_input
+        self.pre_activations['x'] = (pre_activation_x)
+        # print(pre_activation_x)  # this is the single float value with a bias node as well
+        # print(x.shape)  # size of the hidden layer
+        # print(self.layer2.weights.shape)  # hidden size + 1 for the bias output to 3
+        pred = self.layer2.forward(x)  # linear activation here for final layer for the regression problem
+        pre_activation_out_h = self.layer2.og_input
+        self.pre_activations['out_h'] = (pre_activation_out_h)
+        # print(pre_activation_out_h)
+        # print(pred)
+        return pred
 
-        if training:
-            loss = self.criterion.get_loss(pred, y)
-            loss_prime = self.criterion.get_loss_prime(x_pad.reshape(self.hidden_size[0]+1,1), self.criterion.error.reshape(1,3))
-            self.layer3.weights = self.layer3.weights - (self.lr * loss_prime)
+    def backward(self, pred ,y):
+        gray_out = np.dot(pred, [0.21, 0.72, 0.07])
+        gray_ground_truth = np.dot(y, [0.21, 0.72, 0.07])
+        # MSE loss with the neat trick
+        loss = self.criterion.get_loss(pred, y, gray_out=gray_out, gray_groundtruth=gray_ground_truth)
+        grad_w2 = self.criterion.get_loss_prime(self.pre_activations['out_h'])
+        self.layer2.weights = self.layer2.weights - (self.lr * grad_w2)
+        return loss
 
-            g_prime = self.sequential[0].activation.prime(x_pad)#.act_prime
-            back = np.dot(self.layer3.weights, self.criterion.error)
-            back *= g_prime
-            loss_prime = self.criterion.get_loss_prime(
-                self.sequential[0].og_input.reshape(self.sequential[0].weights.shape[0], 1),
-                back[1:].reshape(1, self.sequential[0].weights.shape[1]))
-            self.sequential[0].weights = self.sequential[0].weights - (self.lr * loss_prime)
+    def train(self, epochs, episodes, w, h, train_set, labels):
+        losses = []
+        epoch_history = []
+        for e in range(epochs):
+            avg_loss = 0.0
+            for t in range(episodes):
+                rand_pixel = np.random.randint(0, (w * h) - 1)  # would be expensive to shuffle
+                pred = self.forward(train_set[rand_pixel])
+                loss = self.backward(pred, labels[rand_pixel])
+                avg_loss += loss
+            avg_loss /= episodes
+            print("Running Avg Loss at epoch {}: {}".format(e, avg_loss))
+            losses.append(avg_loss)
+            epoch_history.append(e)
+        return losses, epoch_history
 
-            # g_prime = self.sequential[0].activation.prime(self.sequential[1].og_input) #.act_prime
-            # back = np.dot(self.sequential[1].weights, back[1:])
-            # back *= g_prime
-            # loss_prime = self.criterion.get_loss_prime(self.sequential[0].og_input.reshape(self.sequential[0].weights.shape[0], 1),
-            #                                            back[1:].reshape(1, self.sequential[0].weights.shape[1]))
-            # self.sequential[0].weights = self.sequential[0].weights - (self.lr * loss_prime)
-
-            # for layer in (self.sequential):
-            #     g_prime = layer.activation.prime(x_pad)
-            #     print(g_prime.shape)
-            #     print(layer.weights.shape)
-            #     print(self.criterion.error.shape)
-            #     back = np.dot(layer.weights, self.criterion.error)
-            #     back *= g_prime
-            #     loss_prime = self.criterion.get_loss_prime(layer.og_input.reshape(layer.weights.shape[0],1), back[1:].reshape(1, layer.weights.shape[1]))
-            #     layer.weights = layer.weights - (self.lr * loss_prime)
-            return pred, loss
-        return pred, None
-
-
-def data_loader(rgb_img, gray_img, w, h, input_size, output_size):
-    # get the 3x3 patches and get the data in the correct shape and what not
-    X, Y = np.zeros((w*h, input_size), int), np.zeros((w*h, output_size), int)
-    ind = 0
-    for i in range(gray_img.shape[0]):
-        for j in range(gray_img.shape[1]):
-            X[ind] = get_3_patch(gray_img, i, j).flatten()
-            Y[ind] = rgb_img[i, j, 0:3]
-            ind+=1
-    return X, Y
+    def evaluate(self, w, h, c, test_set, plot=False):
+        reconstructed_image = []
+        for i in range(w * h):
+            pred = self.forward(test_set[i])
+            reconstructed_image.append(pred)
+        reconstructed_image = np.array(reconstructed_image)
+        reconstructed_image = reconstructed_image.reshape((w, h, c))
+        np.clip(reconstructed_image, 0, 255, out=reconstructed_image)
+        reconstructed_image = reconstructed_image.astype('uint8')
+        if plot:
+            plot_img_color(reconstructed_image)
+        return reconstructed_image
 
 
-def test_data_loader(gray_img, w, h, input_size):
-    # get the 3x3 patches and get the data in the correct shape and what not
-    X = np.zeros((w*h, input_size), int)
-    ind = 0
-    for i in range(gray_img.shape[0]):
-        for j in range(gray_img.shape[1]):
-            X[ind] = get_3_patch(gray_img, i, j).flatten()
-            ind+=1
-    return X
+
+def data_loader(train_gray, train_rgb, test_gray, w, h):
+    X, Y = [], []
+    X_test = []
+    for i in range(w):
+        for j in range(h):
+            X.append(train_gray[i][j])
+            Y.append(train_rgb[i][j])
+            X_test.append(test_gray[i][j])
+    return (np.array(X), np.array(Y), np.array(X_test))
 
 
 if __name__ == '__main__':
-    IMAGE_PATH = "img/hangang.jpg"
+    IMAGE_PATH = "img/small_train_img.jpg"
     # step1: take a single color image
     original_img = cv2.imread(IMAGE_PATH)
     original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
@@ -160,47 +173,17 @@ if __name__ == '__main__':
 
     dims = train_rgb.shape
     w, h, c = dims[0], dims[1], dims[2]
+    X, Y, X_test = data_loader(train_gray, train_rgb, test_gray, w, h)
 
-    input = 9
-    output = 3
-    # hidden = [32,64]
-    alpha=0.01
-    hidden=[64]
-    X, Y = data_loader(train_rgb, train_gray, w, h, input, output)
-    # print(X)
-    # print(Y)
-    # exit()
+    # hyper parameters
+    INPUT_DIM = 1
+    OUTPUT_DIM = 3
+    HIDDEN_SIZE = 128
+    LR=0.005
+    EPOCH = 300
+    EPISODES = 1000
 
-    net = RayNet(input, output, hidden, lr=alpha)
-    epoch = 1000
-    episodes = 1000
-    losses = []
-    epochs = []
-
-    for e in range(epoch):
-        avg_loss = 0.0
-        for t in range(episodes):
-            rand_pixel = np.random.randint(0, (w*h)-1)  # would be expensive to shuffle
-            pred, loss = net.forward(X[rand_pixel], Y[rand_pixel], training=True)
-            losses.append(loss)
-            avg_loss += loss
-        avg_loss /= episodes
-        print("Running Avg Loss at epoch {}: {}".format(avg_loss, e))
-        if e % 100 == 0:
-            # print([net.sequential[i].weights for i in range(2)])
-            print(net.sequential[0].weights)
-            print(net.layer3.weights)
-        epochs.append(e)
-
-    y_pred = []
-    X_test = test_data_loader(test_gray, w, h, input)
-    for i in range(X_test.shape[0]):
-        out = net.forward(X_test[i], _, training=False)[0]
-        out = np.floor(out)
-        y_pred.append(out)
-    y_pred = np.array(y_pred)
-    y_pred = y_pred.reshape((w,h,c))
-    np.clip(y_pred, 0, 255, out=y_pred)
-    y_pred = y_pred.astype('uint8')
-    print(y_pred)
-    plot_img_color(y_pred)
+    model = RayNet(INPUT_DIM, OUTPUT_DIM, HIDDEN_SIZE, lr=LR)
+    losses, epochs = model.train(EPOCH, EPISODES, w, h, X, Y)
+    plot_img_color(train_rgb)  # left
+    test_rgb = model.evaluate(w, h, c, X_test, plot=True)  # right

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import cv2
 from utils import *
 
@@ -11,6 +12,7 @@ class RayNet2(nn.Module):
             hidden_sizes = [20, 20, 20]
         self.layer1 = nn.Linear(input, hidden_sizes[0])
         self.layer2 = nn.Linear(hidden_sizes[1], output)
+        self.layer3 = nn.Linear()
 
     def forward(self, x):
         x = self.layer1(x)

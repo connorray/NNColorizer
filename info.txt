@@ -35,16 +35,40 @@ Improved Agent:
 - https://towardsdatascience.com/how-to-build-your-own-neural-network-from-scratch-in-python-68998a08e4f6
 - https://github.com/CihanBosnali/Neural-Network-without-ML-Libraries/blob/master/single-layer-neural-net-without-ml-libraries.py
 
+2 layer NN:
+- https://towardsdatascience.com/coding-a-2-layer-neural-network-from-scratch-in-python-4dd022d19fd2
+
 np.random.uniform for weights init
 - https://www.wandb.com/articles/the-effects-of-weight-initialization-on-neural-nets
 - https://www.wandb.com/articles/the-effects-of-weight-initialization-on-neural-nets
 - https://stackoverflow.com/questions/22071987/generate-random-array-of-floats-between-a-range
 
+using NN's for prediction: (why last layer should be linear)
+- https://www.researchgate.net/post/What_should_be_my_activation_function_for_last_layer_of_neural_network
+- https://www.quora.com/What-may-be-the-reasons-for-using-linear-activation-function-in-neural-networks
+- https://datascience.stackexchange.com/questions/13696/lack-of-activation-function-in-output-layer-at-regression
+- https://stackoverflow.com/questions/50103377/keras-neural-network-preprocessing
+
+- https://github.com/deepGio/ANNFromScratch/blob/master/ANNfromScratch.ipynb  --> for explanation
+
+updating only a part of a NN:
+- https://cs.stackexchange.com/questions/61238/why-updating-only-a-part-of-all-neural-network-weights-does-not-work
+
+MSE loss
+- https://stackoverflow.com/questions/16774849/mean-squared-error-in-numpy
+
+Derivative of MSE loss for vectors
+- https://stats.stackexchange.com/questions/153285/derivative-of-softmax-and-squared-error
+
 https://github.com/kcolyhs/Colorizer
 
 - https://www.geeksforgeeks.org/deep-neural-net-with-forward-and-back-propagation-from-scratch-python/
+
+How to train test split
+- https://algotrading101.com/learn/train-test-split/
 
 -----------------------------------------------------------------------------------------------------------------------
 potential inspiration for coloring images based on a dataset of images (extra credit):
 - http://cs231n.stanford.edu/reports/2016/pdfs/219_Report.pdf
 - https://lukemelas.github.io/image-colorization.html
+- http://cs231n.stanford.edu/reports/2017/pdfs/302.pdf
