@@ -1,11 +1,10 @@
 import cv2
-
-IMAGE_PATH = "img/small_train_img.jpg"
-K = 5
-from utils import *
+from utils import *  # all implementation logic is in utils
 
 
 if __name__ == '__main__':
+    IMAGE_PATH = "img/small_train_img.jpg"
+    K = 5
     # step 1: take a single color image
     '''source: https://stackoverflow.com/questions/50963283/python-opencv-imshow-doesnt-need-convert-from-bgr-to-rgb'''
     original_img = cv2.imread(IMAGE_PATH)
@@ -23,7 +22,7 @@ if __name__ == '__main__':
     rep_train_rgb = kmeans(K, train_rgb, colors, plot=False)
     # step5b: set aside the recoloring of the rgb training data by replacing each pixel's true color with the colors
         # from step 5a.
-    print(rep_train_rgb.shape)
+
     # step 5c: have a function to grab each 3x3 patch in the test data
         # for each patch in the test data, find the 6 most similar patches in the black and white training data
     rep_test_rgb = basic_agent_logic(test_gray, train_gray, rep_train_rgb)

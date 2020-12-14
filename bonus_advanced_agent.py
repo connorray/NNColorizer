@@ -36,11 +36,12 @@ class RayNet2(nn.Module):
             hidden_sizes = [32, 64]
         self.device = device
         self.net = nn.Sequential(
-            nn.Linear(input, hidden_sizes[0]),
+            nn.Linear(input, hidden_sizes[0], bias=True),
             nn.ReLU(),
-            nn.Linear(hidden_sizes[0], hidden_sizes[1]),
+            nn.Linear(hidden_sizes[0], hidden_sizes[1], bias=True),
             nn.ReLU(),
-            nn.Linear(hidden_sizes[1], output),
+            nn.Linear(hidden_sizes[1], output, bias=True),
+            nn.ReLU(),
         )
 
     def forward(self, x):
@@ -53,8 +54,6 @@ if __name__ == '__main__':
     # step1: take a single color image
     original_img = cv2.imread(IMAGE_PATH)
     original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
-
-    original_img = np.true_divide(original_img, 255)  # normalize the image for relu
     # step 2: convert this color image to black and white
     original_img_gray = make_gray(original_img)
     # step 3: use the left half of the image as training data (both rgb and the black and white)
@@ -68,10 +67,15 @@ if __name__ == '__main__':
     hidden = [32, 64]
     lr = 0.005
 
+    # normalize data
+    train_rgb = np.true_divide(train_rgb, 255)
+    train_gray = np.true_divide(train_gray, 255)
+    test_gray = np.true_divide(test_gray, 255)
+
     net = RayNet2(input=input_size, output=output_size, hidden_sizes=hidden)
     criterion = nn.MSELoss()
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    optim = optim.Adam(params=net.parameters(), lr=lr)
+    optim = optim.SGD(params=net.parameters(), lr=lr, momentum=0.9)
     net.to(device)
     print("Running on: ", device)
 
@@ -99,6 +103,7 @@ if __name__ == '__main__':
     for i in range(w * h):
         pred = net(torch.Tensor(X_test[i]).to(device))
         pred = pred.cpu().detach().numpy()
+        pred = pred*255
         reconstructed_image.append(pred)
     reconstructed_image = np.array(reconstructed_image)
     reconstructed_image = reconstructed_image.reshape((w, h, c))

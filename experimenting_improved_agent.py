@@ -1,62 +1,31 @@
 import cv2
 import sklearn.model_selection as sk
 from utils import *
+from improve import data_loader, Activation
 
 np.random.seed(22)
 
 
-class Activation:
-    def __init__(self, type):
-        self.type = type
-
-    def activate(self, z):
-        if self.type =='sigmoid':
-            return self._sigmoid(z)
-        elif self.type == 'relu':
-            return self._relu(z)
-        elif self.type == 'linear':
-            return z
-
-    def prime(self, a):
-        if self.type =='sigmoid':
-            return self._sigmoid_prime(a)
-        elif self.type == 'relu':
-            return self._relu_derivative(a)
-        elif self.type == 'linear':
-            return 1
-
-    def _sigmoid(self,z):
-        return 1/(np.exp(-z)+1)
-
-    def _relu(self, z):
-        return np.maximum(z, 0)
-
-    def _sigmoid_prime(self, a):
-        """
-        Return the derivative of the sigmoid activation function
-        :param a: activation
-        :return:
-        """
-        return a * (1-a)
-
-    def _relu_derivative(self, a):
-        """
-        Fastest way to get relu derivative
-        source: https://stackoverflow.com/questions/46411180/implement-relu-derivative-in-python-numpy
-        :param a: activation
-        :return:
-        """
-        return np.greater(a, 0)
-
-
+# supplementary to improve.py
 class Criterion:
     def __init__(self):
         self.error = None
 
-    def get_constraint_loss(self, out, y, gray_out, gray_groundtruth, lamb=0.01):
+    def get_constraint_loss(self, out, y, gray_out, gray_groundtruth, w, lamb=0.01, lamb2=0.001):
+        """
+        includes regularization but it didn't really help
+        :param out: the predicted rgb value
+        :param y: the label rgb value
+        :param gray_out: the gray scale of out
+        :param gray_groundtruth: the gray scale of y
+        :param w: the weight of the layer
+        :param lamb: param for level of constraining
+        :param lamb2: for regularization
+        :return:
+        """
         # MSE loss with a neat trick for constraining values for the conversion from gray to rgb
         self.error = np.subtract(out, y)
-        return (np.square(self.error) + lamb * (gray_out - gray_groundtruth) ** 2).mean()
+        return (np.square(self.error) + lamb * (gray_out - gray_groundtruth) ** 2 + (lamb2 * np.linalg.norm(w))).mean()
 
     def get_loss_prime(self, x):
         x = x.reshape(x.shape[0],1)
@@ -106,15 +75,17 @@ class RayNet:
         return pred
 
     def backward(self, pred ,y):
-        # loss = self.criterion.get_loss(pred, y)  # MSE loss
         gray_out = np.dot(pred, [0.21, 0.72, 0.07])
         gray_ground_truth = np.dot(y, [0.21, 0.72, 0.07])
-        loss = self.criterion.get_constraint_loss(pred, y, gray_out=gray_out, gray_groundtruth=gray_ground_truth)
+        loss = self.criterion.get_constraint_loss(pred, y, gray_out=gray_out, gray_groundtruth=gray_ground_truth, w=self.layer2.weights)
         grad_w2 = self.criterion.get_loss_prime(self.pre_activations['a2'])
         self.layer2.weights = self.layer2.weights - (self.lr * grad_w2)
         return loss
 
     def train(self, epochs, episodes, train_set, labels, validation_set, validation_labels):
+        """
+        Same as the one in improve.py but with validation set
+        """
         losses = []
         validation_losses = []
         epoch_history = []
@@ -130,7 +101,7 @@ class RayNet:
                 val_pred = self.forward(validation_set[rand_pixel_val])
                 gray_val_pred = np.dot(val_pred, [0.21, 0.72, 0.07])
                 gray_val_ground_truth = np.dot(validation_labels[rand_pixel_val], [0.21, 0.72, 0.07])
-                validation_loss += self.criterion.get_constraint_loss(val_pred, validation_labels[rand_pixel_val], gray_val_pred, gray_val_ground_truth)
+                validation_loss += self.criterion.get_constraint_loss(val_pred, validation_labels[rand_pixel_val], gray_val_pred, gray_val_ground_truth, self.layer2.weights)
 
                 avg_loss += loss
             avg_loss /= episodes
@@ -155,20 +126,8 @@ class RayNet:
         return reconstructed_image
 
 
-
-def data_loader(train_gray, train_rgb, test_gray, w, h):
-    X, Y = [], []
-    X_test = []
-    for i in range(w):
-        for j in range(h):
-            X.append(train_gray[i][j])
-            Y.append(train_rgb[i][j])
-            X_test.append(test_gray[i][j])
-    return (np.array(X), np.array(Y), np.array(X_test))
-
-
 if __name__ == '__main__':
-    IMAGE_PATH = "img/hangang.jpg"
+    IMAGE_PATH = "img/small_train_img.jpg"
     # step1: take a single color image
     original_img = cv2.imread(IMAGE_PATH)
     original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
@@ -183,6 +142,7 @@ if __name__ == '__main__':
     w, h, c = dims[0], dims[1], dims[2]
     X, Y, X_test = data_loader(train_gray, train_rgb, test_gray, w, h)
 
+    # validation set for experiments
     X, X_val, Y, Y_val = sk.train_test_split(X, Y, train_size=0.8, test_size=0.2, random_state=22)
     # print(X.shape, Y.shape, X_val.shape, Y_val.shape)
     # exit()
@@ -191,20 +151,21 @@ if __name__ == '__main__':
     INPUT_DIM = 1
     OUTPUT_DIM = 3
     LR=0.005
-    # LR = 0.01
+    # LR = 0.01  # ok
     EPOCH = 1000
-    EPISODES = 1000
+    EPISODES = 10000
     # hidden=32  # pretty good
     # hidden = 64  # bad
     # hidden = 100  # better than 32
     HIDDEN_SIZE = 128  # better than 100
+    # hidden = 256  # doesn't learn
     # hidden = 512  # doesn't learn
 
     model = RayNet(INPUT_DIM, OUTPUT_DIM, HIDDEN_SIZE, lr=LR)
     losses, validation_losses, epochs = model.train(EPOCH, EPISODES, X, Y, X_val, Y_val)
 
-    plt.xlabel('Epochs (1000 episodes per)')
-    plt.ylabel('Loss')
+    plt.xlabel('Epochs (10000 episodes per)')
+    plt.ylabel('Loss of the validation and training data')
     plt.plot(epochs, losses, label="train")
     plt.plot(epochs, validation_losses, label="validation")
     plt.legend()

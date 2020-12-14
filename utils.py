@@ -4,8 +4,6 @@ import matplotlib.image as mpimg
 from mpl_toolkits.mplot3d import Axes3D
 from operator import itemgetter
 
-IMAGE_PATH = "img/small_train_img.jpg"
-
 
 def make_gray(rgb_matrix):
     """
@@ -93,7 +91,7 @@ def kmeans(k, image, dataset, max_ita=10, plot=False):
         for data in dataset:
             distance = []
             for j in range(k):
-                distance.append(np.linalg.norm(data - centroids[j]))  # Euclidian distance between data point and center
+                distance.append(np.linalg.norm(data - centroids[j]))  # Euclidean distance between data point and center
             clusters[np.argmin(distance)].append(data)  # choose the arg 0,k-1 where the datapoint was closest to center
         for i in range(k):
             centroids[i] = np.average(clusters[i], axis=0)  # new center averaging the points in the cluster
@@ -227,13 +225,22 @@ def get_3_patch(data, i, j):
 
 
 def get_rep_color_from_patch(train_rgb, i, j):
+    """
+    Return the representative color of the middle pixel in the re-colored training data
+    :param train_rgb: the re-colored training data
+    :param i,j: the pixel (i,j)
+    :return:
+    """
     return tuple(train_rgb[i][j])
 
 
-def basic_agent_logic(test_data, train_data_gray, train_data_rgb):
+def basic_agent_logic(test_data, train_data_gray, train_data_rgb, K=6):
     """
     Get every 3x3 patch in data
     :param test_data: input grayscale image
+    :param train_data_gray: the gray scale training data
+    :param train_data_rgb: the recolored train data based on kmeans
+    :param K: the choice of K for the number of neighbors to look at (6 for the basic agent)
     :return:
     """
     rep_test_img = np.zeros(train_data_rgb.shape, dtype=int)  # to return
@@ -242,7 +249,7 @@ def basic_agent_logic(test_data, train_data_gray, train_data_rgb):
             # we grab a 3x3 patch of the gray scale data each iteration
             test_patch = get_3_patch(test_data, i, j)
             # get the 6 most similar patches from the train data
-            top_6_dict = get_6_similar_patches(test_patch, train_data_gray)
+            top_6_dict = get_k_similar_patches(test_patch, train_data_gray, K)
             # use these similar patches to get a representative color for the test data
             rep_colors = []
             for (index), value in top_6_dict.items():
@@ -264,27 +271,28 @@ def basic_agent_logic(test_data, train_data_gray, train_data_rgb):
             tie = False
             for key, count in colors.items():
                 if key == most_common_rep_color:
-                    continue
+                    continue  # don't care about this we just wanna see if it comes out more than once
                 if count == colors[most_common_rep_color]:
-                    tie = True
+                    tie = True  # no majority representative color
                     break
-            if tie is False:
+            if tie is False:  # then just take the most common representative color in the patches
                 rep_test_img[i, j] = list(most_common_rep_color)
-            else:
+            else:  # need to go back and use the top 6 dictionary and find the most similar patch to the test data patch
                 # choose min value from the dictionary of top 6 patches as the representative patch for the test data
                 (most_similar_train_patch) = min(top_6_dict.keys(), key=lambda k:top_6_dict[k])
                 rep_test_img[i,j] = get_rep_color_from_patch(train_data_rgb, most_similar_train_patch[0], most_similar_train_patch[1])
-            print(rep_test_img)
+            print(rep_test_img)  # just to make sure we filling in this array
     return rep_test_img
 
 
-def get_6_similar_patches(patch, train_data_gray):
+def get_k_similar_patches(patch, train_data_gray, K=6):
     """
     For the given patch, search the gray train data for the 6 most similar patches. The metric for similarity will
     be the distance between the two patch matrices.
 
     :param patch: given patch from the test data
     :param train_data_gray: the left half of the original image in gray scale
+    :param K: the number of nearest neighbors to look for (6 for basic agent)
     :return: a dictionary which maps the indices of the minimum distances (most similar) patches in the train data
                 to the given patch we are comparing to:
                                                             of form: {(i, j) : float}
@@ -298,7 +306,6 @@ def get_6_similar_patches(patch, train_data_gray):
             distance = get_cumulative_distance(patch, train_patch)
             distances[(i, j)] = distance
     # need the top 6 most similar patches from the train patches compared to the original patch from the test data
-    K = 6
     # Source: https://www.geeksforgeeks.org/python-smallest-k-values-in-dictionary/
     res = dict(sorted(distances.items(), key=itemgetter(1))[:K])
     return res
@@ -306,7 +313,7 @@ def get_6_similar_patches(patch, train_data_gray):
 
 def get_cumulative_distance(m1, m2):
     """
-    Get the cumulative Euclidian distance between two matrices
+    Get the cumulative Euclidean distance between two matrices
     :param m1: input matrix1
     :param m2: input matrix2
     :return: float
@@ -347,10 +354,10 @@ def kmeans_elbow_helper(k, dataset):
     return np.average(distances, axis=0)
 
 
-def plot_elbow_kmeans(dataset):
+def plot_elbow_kmeans(dataset, range_k=100):
     # Source: https://stackoverflow.com/questions/5283649/plot-smooth-line-with-pyplot
     # the above source is how I smoothed the elbow plot
-    ks = [k for k in range(1, 100)]
+    ks = [k for k in range(1, range_k)]
     avg_distances_to_nearest_center = []
     for k in ks:
         avg_distances_to_nearest_center.append(kmeans_elbow_helper(k, dataset))
@@ -362,6 +369,7 @@ def plot_elbow_kmeans(dataset):
 
 
 if __name__ == '__main__':
+    IMAGE_PATH = "img/small_train_img.jpg"
     K = 59
     original_input_image = mpimg.imread(IMAGE_PATH)
     rgb_matrix = np.array(original_input_image)  # these are all of the RGB vectors needed
@@ -372,11 +380,14 @@ if __name__ == '__main__':
     train_data_gray = left_half_gray
     test_data = right_half_gray  # test data is just the gray correspondence of the image
 
+    K_N = int(np.floor(np.sqrt(train_data_rgb.shape[0] * train_data_rgb.shape[1])))
+    # https://towardsdatascience.com/how-to-find-the-optimal-value-of-k-in-knn-35d936e554eb#:~:text=The%20optimal%20K%20value%20usually,be%20aware%20of%20the%20outliers.
+
     dataset = get_colors(train_data_rgb)
     # just plotting this to see if we have a reasonable reconstruction learned
     # dataset_entire_img = get_colors(rgb_matrix)
     # representative_entire_image = kmeans(K, rgb_matrix, dataset_entire_img, plot=True)
     train_rgb_5_colors = kmeans(K, train_data_rgb, dataset, plot=False)
-    rep_test_img = basic_agent_logic(test_data, train_data_gray, train_rgb_5_colors)
+    rep_test_img = basic_agent_logic(test_data, train_data_gray, train_rgb_5_colors, K=K_N)
     plot_img_color(rep_test_img)
-    # plot_elbow_kmeans(dataset)
+    # plot_elbow_kmeans(dataset, range_k=500)
