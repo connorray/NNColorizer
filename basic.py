@@ -17,7 +17,7 @@ if __name__ == '__main__':
     train_gray, test_gray = cut_img_in_half(original_img_gray)
     # step 5: try to recolor the test data based on the training data
     # step 5aa: set aside an array of the colors in the train data
-    colors = get_colors(train_rgb)  # maybe we don't need this
+    colors = get_colors(train_rgb)
     # step 5a: run k means on the rgb training data to get the 5 representative colors
     rep_train_rgb = kmeans(K, train_rgb, colors, plot=False)
     # step5b: set aside the recoloring of the rgb training data by replacing each pixel's true color with the colors
